@@ -19,7 +19,9 @@ print(f"Using device: {device}")
 # ========== FREQUENCY DISTRIBUTION FUNCTIONS ==========
 
 def create_frequency_distribution_curve(data, num_classes=20, smooth=True):
-    """Creates smooth frequency distribution curve from raw data"""
+    """Creates smooth frequency distribution curve from raw data
+    returns x_smooth,y_smooth->300 points in between midpoints to make a smooth curve
+        (midpoints of the histograms),frequencies (inside the bins how often the data occurs)"""
     # if there is no data
     if len(data) == 0:
         return np.array([]), np.array([]), np.array([]), np.array([])
@@ -43,12 +45,17 @@ def create_frequency_distribution_curve(data, num_classes=20, smooth=True):
 def plot_frequency_distributions(genuine_scores, impostor_scores, title="Score Distribution"):
     """Plot frequency distribution curves for genuine and impostor scores"""
     if len(genuine_scores) > 0:
-        x_gen, y_gen, _, _ = create_frequency_distribution_curve(genuine_scores)
+        x_gen, y_gen, _, _ = create_frequency_distribution_curve(genuine_scores) # creates x_smooth and y_smooth values for a frequency distribuition curve duhh!!
+        # Plots the 300 points in between midpoints to make a smooth curve
         plt.plot(x_gen, y_gen, 'b-', linewidth=2, label='Genuine Scores', alpha=0.8)
+        # Fills the area under the curve with a light blue color
         plt.fill_between(x_gen, y_gen, alpha=0.3, color='blue')
+        # Plots the histogram of genuine scores with 20 bins, alpha for transparency, density=True for normalization
+        # and color blue with black edges
         plt.hist(genuine_scores, bins=20, alpha=0.4, density=True, color='blue', 
                 edgecolor='black', linewidth=0.5)
-    
+
+        # same for impostor scores
     if len(impostor_scores) > 0:
         x_imp, y_imp, _, _ = create_frequency_distribution_curve(impostor_scores)
         plt.plot(x_imp, y_imp, 'r-', linewidth=2, label='Impostor Scores', alpha=0.8)
@@ -64,22 +71,25 @@ def plot_frequency_distributions(genuine_scores, impostor_scores, title="Score D
 
 def analyze_distribution_characteristics(scores, labels):
     """Analyze statistical characteristics of score distributions"""
+    # for two classes: genuine (1) and impostor (0)
     genuine_scores = scores[labels == 1]
     impostor_scores = scores[labels == 0]
-    
+    # if there are no scores for either class, return empty dict
     if len(genuine_scores) == 0 or len(impostor_scores) == 0:
         return {}
-    
+    # various statistical measures for both genuine and impostor scores
     analysis = {
         'genuine': {
             'mean': np.mean(genuine_scores),
-            'std': np.std(genuine_scores),
+            'std': np.std(genuine_scores), # standard deviation
             'median': np.median(genuine_scores),
             'skewness': stats.skew(genuine_scores),
-            'kurtosis': stats.kurtosis(genuine_scores),
+            'kurtosis': stats.kurtosis(genuine_scores), # how peaked the distribution is # high kurtosis means more outliers (peaked distribution) leptokurtic distribution
+            # low kurtosis means more flat distribution
             'min': np.min(genuine_scores),
             'max': np.max(genuine_scores)
         },
+        # similar measures for impostor scores
         'impostor': {
             'mean': np.mean(impostor_scores),
             'std': np.std(impostor_scores),
@@ -92,7 +102,9 @@ def analyze_distribution_characteristics(scores, labels):
     }
     
     analysis['separation'] = {
+        # how far apart the average of the two distributions are
         'mean_difference': analysis['genuine']['mean'] - analysis['impostor']['mean'],
+        # statsical measure of how well the two distributions are separated
         'decidability_index': calculate_decidability_index(genuine_scores, impostor_scores)
     }
     return analysis
