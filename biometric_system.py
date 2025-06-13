@@ -114,6 +114,7 @@ def analyze_distribution_characteristics(scores, labels):
 # computing image quality using laplacian (as brisque was not available in the environment), i did on kaggle kernel
 
 # how it works:
+# Old using laplacian but brisue is the code faithful to the paper
 def ompute_image_quality(img):
     """Compute Image quality score"""
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if len(img.shape) == 3 else img # if the image is in 3 chanels. convert it to grayscale
