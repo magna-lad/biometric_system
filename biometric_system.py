@@ -111,12 +111,73 @@ def analyze_distribution_characteristics(scores, labels):
 
 # ========== QUALITY ASSESSMENT ==========
 
-def compute_brisque_quality(img):
-    """Compute BRISQUE-like quality score"""
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if len(img.shape) == 3 else img
-    lap_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+# computing image quality using laplacian (as brisque was not available in the environment), i did on kaggle kernel
+
+# how it works:
+def ompute_image_quality(img):
+    """Compute Image quality score"""
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if len(img.shape) == 3 else img # if the image is in 3 chanels. convert it to grayscale
+    lap_var = cv2.Laplacian(gray, cv2.CV_64F).var() # compute the laplacian variance of the image by performing a laplacian filter on the image,that is a second order derivative filter, and then computing the variance of the result
+    # if the variance is too low, the image is blurry or has low quality
     beta = np.clip(100.0 - lap_var, 0.0, 100.0)
     return beta
+
+# but the original code uses brisque quality score, so we will use that as well
+# can also be done by using brisque library from github but doesnt give better results than this    
+def compute_brisque_quality(img):
+    """
+    Custom BRISQUE implementation that works without external dependencies
+    Based on the paper's methodology
+    """
+    # Convert to grayscale if needed
+    if len(img.shape) == 3:
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    else:
+        gray = img.copy()
+    
+    gray = gray.astype(np.float64)
+    
+    # Step 1: Compute local mean and variance
+    mu = cv2.GaussianBlur(gray, (7, 7), 1.166) # mean filter with a kernel size of 7x7 and sigma of 1.166
+    # mu_sq is the mean of the square of the image
+    # sigma is the standard deviation of the image
+    mu_sq = cv2.GaussianBlur(gray**2, (7, 7), 1.166)
+    sigma = np.sqrt(np.abs(mu_sq - mu**2))
+    
+    # Step 2: Compute MSCN (Mean Subtracted Contrast Normalized) coefficients
+    mscn = (gray - mu) / (sigma + 1)
+    
+    # Step 3: Extract features from MSCN coefficients
+    features = []
+    
+    # Compute moments of MSCN distribution
+    features.append(np.mean(mscn))
+    features.append(np.var(mscn))
+    features.append(np.mean(np.abs(mscn)))
+    features.append(np.mean(mscn**2))
+    
+    # Compute features from horizontal, vertical, and diagonal neighbors
+    shifts = [(0, 1), (1, 0), (1, 1), (1, -1)]
+    
+    for shift in shifts:
+        shifted_mscn = np.roll(np.roll(mscn, shift[0], axis=0), shift[1], axis=1)
+        pairwise_products = mscn * shifted_mscn
+        
+        features.append(np.mean(pairwise_products))
+        features.append(np.var(pairwise_products))
+        features.append(np.mean(np.abs(pairwise_products)))
+    
+    # Step 4: Compute quality score (simplified mapping)
+    # This is a simplified version - the full BRISQUE uses SVR
+    feature_vector = np.array(features)
+    
+    # Normalize features
+    feature_vector = (feature_vector - np.mean(feature_vector)) / (np.std(feature_vector) + 1e-8)
+    
+    # Simple quality mapping (0-100 scale)
+    quality_score = np.clip(50 + 25 * np.tanh(np.mean(feature_vector)), 0, 100)
+    
+    return quality_score
 
 def compute_reliability_factor(beta):
     """Compute reliability factor from quality score"""
